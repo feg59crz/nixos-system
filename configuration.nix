@@ -1,6 +1,12 @@
 { config, pkgs, ... }:
 let
-
+  nvidia-offload = pkgs.writeShellScriptBin "nvidia-offload" ''
+    export __NV_PRIME_RENDER_OFFLOAD=1
+    export __NV_PRIME_RENDER_OFFLOAD_PROVIDER=NVIDIA-G0
+    export __GLX_VENDOR_LIBRARY_NAME=nvidia
+    export __VK_LAYER_NV_optimus=NVIDIA_only
+    exec "$@"
+  '';
 in
 {
   imports =
@@ -82,7 +88,6 @@ in
     extraGroups = [ "networkmanager" "docker" "wheel" "libvirtd" ];
     packages = with pkgs; [
       firefox
-    #  thunderbird
     ];
   };
 
@@ -93,6 +98,7 @@ in
   # $ nix search wget
   environment.systemPackages = with pkgs; [
     virt-manager
+    nvidia-offload
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
@@ -114,7 +120,15 @@ in
   # Libvirtd
   virtualisation.libvirtd.enable = true;
   programs.dconf.enable = true;
-  
+ 
+  # intel/nvidia (optimus) & opengl
+  services.xserver.videoDrivers = [ "intel" "nvidia" ]; 
+  hardware.opengl.enable = true;
+  hardware.nvidia.prime = {
+    offload.enable = true;
+    intelBusId = "PCI:0:2:0";
+    nvidiaBusId = "PCI:2:0:0";
+  };
 
   system.stateVersion = "22.05"; # Did you read the comment?
 }
